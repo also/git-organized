@@ -1,6 +1,6 @@
 {
   "name": "git-organized",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Keep git repos organized",
   "bin": {
     "git-organized": "lib/index.js"
