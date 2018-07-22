@@ -135,6 +135,32 @@ function readStashes(repo): Promise<Array<Stash>> {
     });
 }
 
+function readRemotes(repo) {
+  const callbacks = {
+    credentials(url, userName) {
+      return Git.Cred.sshKeyFromAgent(userName);
+    }
+  };
+
+  return repo.getRemotes()
+    .then((remotes) => {
+      return Promise.all(remotes.map((remoteName) => {
+        return Git.Remote.lookup(repo, remoteName)
+          .then((remote) => {
+            console.log(remote.url());
+            return remote.connect(Git.Enums.DIRECTION.FETCH, callbacks)
+              .then(() => {
+                return remote.defaultBranch()
+                  .then((defaultBranch) => {
+                    console.log(`defaultBranch: ${defaultBranch}`);
+                  })
+                //console.log('connected?', wat);
+              });
+          })
+      }))
+    });
+}
+
 export function readRepo(repoPath: string): Promise<Repo> {
   return Git.Repository.open(repoPath)
     .then((repo) => {
@@ -151,7 +177,8 @@ export function readRepo(repoPath: string): Promise<Repo> {
         references: readReferences(repo),
         stashes: readStashes(repo),
         detached: repo.headDetached() === 1,
-        state: repo.state()
+        state: repo.state(),
+        remotes: readRemotes(repo)
       });
     });
 }
