@@ -13,53 +13,76 @@ import {readRepo} from './git';
 
 const ignore = new Set(['node_modules']);
 
-function collectGits(dirPath: string, result: Array<string>=[]): Array<string> {
-  fs.readdirSync(dirPath).forEach((basename) => {
-    const subDirPath = path.join(dirPath, basename);
-    if (basename === '.git') {
-      console.log(`found ${dirPath}`);
-      result.push(dirPath);
-    }
-    else if (basename[0] !== '.' && !ignore.has(basename)) {
-      let stat;
-      try {
-        stat = fs.statSync(subDirPath);
-      } catch (e) {
-        if (e.code !== 'ENOENT') {
-          throw e;
+type Dir = {dir: string, isRepo: boolean};
+
+function collectDirs(root: string): Array<Dir> {
+  const result = [];
+  function recurse(dirPath: string, depth: number, inRepo: boolean) {
+    let hasGit = false;
+    const subDirs = [];
+    fs.readdirSync(dirPath).forEach((basename) => {
+      const subDirPath = path.join(dirPath, basename);
+      if (basename === '.git') {
+        hasGit = true;
+        console.log(`found ${dirPath}`);
+        result.push({dir: dirPath, isRepo: true});
+      }
+      else if (basename[0] !== '.' && !ignore.has(basename)) {
+        let stat;
+        try {
+          stat = fs.statSync(subDirPath);
+        } catch (e) {
+          if (e.code !== 'ENOENT') {
+            throw e;
+          }
+          return;
         }
-        return;
+
+        if (stat.isDirectory()) {
+          subDirs.push(subDirPath);
+        }
       }
-      if (stat.isDirectory()) {
-        collectGits(subDirPath, result);
-      }
+    });
+
+    subDirs.forEach((subDirPath) => {
+      recurse(subDirPath, depth + 1, hasGit);
+    });
+
+    if (depth === 1 && !(inRepo || hasGit)) {
+      result.push({dir: dirPath, isRepo: false});
     }
-  });
+  }
+
+  recurse(path.resolve(root), 0, false);
+
   return result;
 }
 
-function checkRepo(repoPath: string) {
-  return readRepo(repoPath)
-    .then((repo) => {
-      return lint.applyRules(rules, repo);
-    })
+function checkDir({dir, isRepo}: Dir) {
+  const result = isRepo
+    ? readRepo(dir)
+      .then((repo) => {
+        return lint.applyRules(rules, repo);
+      })
+    : Promise.resolve({failures: [{ruleName: 'not-repo', safe: false}]})
+  return result
     .then((ruleResults) => {
+      console.log(chalk.underline(dir));
       lint.summary(ruleResults);
       console.log();
     });
 }
 
-const gits = collectGits(process.argv[2] || '.');
+const dirs = collectDirs(process.argv[2] || '.');
 
 console.log('checking repos');
 // $FlowIssue https://github.com/facebook/flow/issues/1163
-const iterator = gits[Symbol.iterator]();
+const iterator = dirs[Symbol.iterator]();
 
 function advance() {
   const {done, value} = iterator.next();
   if (!done) {
-    console.log(chalk.underline(value));
-    checkRepo(value).then(advance).catch(e => setImmediate(() => {throw e;}));
+    checkDir(value).then(advance).catch(e => setImmediate(() => {throw e;}));
   }
 }
 
