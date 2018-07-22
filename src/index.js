@@ -15,6 +15,8 @@ const ignore = new Set(['node_modules']);
 
 type Dir = {dir: string, isRepo: boolean};
 
+type DirResult = {dir: Dir, result: lint.LintResults, safe: boolean};
+
 function collectDirs(root: string): Array<Dir> {
   const result = [];
   function recurse(dirPath: string, depth: number, inRepo: boolean) {
@@ -58,32 +60,43 @@ function collectDirs(root: string): Array<Dir> {
   return result;
 }
 
-function checkDir({dir, isRepo}: Dir) {
-  const result = isRepo
-    ? readRepo(dir)
+function checkDir(dir: Dir): Promise<DirResult> {
+  const result = dir.isRepo
+    ? readRepo(dir.dir)
       .then((repo) => {
         return lint.applyRules(rules, repo);
       })
     : Promise.resolve({failures: [{ruleName: 'not-repo', safe: false}]})
-  return result
-    .then((ruleResults) => {
-      console.log(chalk.underline(dir));
-      lint.summary(ruleResults);
-      console.log();
-    });
+  return result.then((result) => ({result, dir, safe: result.failures.every(({safe}) => safe)}));
+}
+
+function checkDirs(dirs: Dir[]): Promise<DirResult[]> {
+  // $FlowIssue https://github.com/facebook/flow/issues/1163
+  const iterator = dirs[Symbol.iterator]();
+
+  const results = [];
+
+  function advance() {
+    const {done, value} = iterator.next();
+    if (done) {
+      return Promise.resolve(results);
+    } else {
+      return checkDir(value).then((result) => {
+        results.push(result);
+        return advance();
+      });
+    }
+  }
+
+  return advance();
 }
 
 const dirs = collectDirs(process.argv[2] || '.');
-
 console.log('checking repos');
-// $FlowIssue https://github.com/facebook/flow/issues/1163
-const iterator = dirs[Symbol.iterator]();
-
-function advance() {
-  const {done, value} = iterator.next();
-  if (!done) {
-    checkDir(value).then(advance).catch(e => setImmediate(() => {throw e;}));
-  }
-}
-
-advance();
+checkDirs(dirs).then((dirResults) => {
+  dirResults.forEach(({dir, result}) => {
+    console.log(chalk.underline(dir.dir));
+    lint.summary(result);
+    console.log();
+  })
+}).catch(e => setImmediate(() => {throw e;}));

@@ -2,9 +2,9 @@
 
 import chalk from 'chalk';
 
-type LintResult = {ruleName: string, message?: string, safe: boolean};
+export type LintResult = {ruleName: string, message?: string, safe: boolean};
 
-type LintResults = {
+export type LintResults = {
   failures: Array<LintResult>
 };
 
@@ -20,7 +20,7 @@ export function summary(ruleResults: LintResults) {
   if (ruleResults.failures.length === 0) {
     console.log(`  ${chalk.green('OK')}`);
   }
-  ruleResults.failures.forEach(({ruleName, message='', safe}) => {
+  ruleResults.failures.forEach(({ruleName, message=''}) => {
     console.log(`  ${chalk.red('error')}\t${ruleName}\t\t${message}`);
   });
 }
