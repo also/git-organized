@@ -3,6 +3,7 @@
 Checks your cloned Git repositories for disorganization.
 
 ```
+$ brew install libgcrypt # might be required
 $ npm install -g git-organized
 
 $ git organized
