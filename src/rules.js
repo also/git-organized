@@ -43,7 +43,7 @@ export default {
   'no-behind'(lint: LintReporter, repo: Repo) {
     repo.references.forEach(({upstreamAheadBehind, shorthand}) => {
       if (upstreamAheadBehind && upstreamAheadBehind.behind !== 0) {
-        lint.fail(PRETTY`${shorthand} is behind by ${upstreamAheadBehind.behind} commit(s)`);
+        lint.fail(PRETTY`${shorthand} is behind by ${upstreamAheadBehind.behind} commit(s)`, {safe: true});
       }
     });
   },
@@ -56,7 +56,7 @@ export default {
     const now = +new Date();
     repo.references.forEach((ref) => {
       if (ref.isHead && ref.commit && (now - ref.commit.date) > (1000*60*60*24*30)) {
-        lint.fail(PRETTY`${ref.shorthand} last committed on ${ref.commit.date}`);
+        lint.fail(PRETTY`${ref.shorthand} last committed on ${ref.commit.date}`, {safe: true});
       }
     });
   }
