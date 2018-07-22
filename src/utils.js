@@ -9,7 +9,7 @@ export function allObj(obj: { [key: string]: any }): any {
       .keys(obj)
       .map((key) => Promise.resolve(obj[key])
         .then((res) => ({[key]: res}))))
-    .then((objs) => Object.assign(...objs));
+    .then((objs) => Object.assign({}, ...objs));
 }
 
 export function PRETTY(strings: Array<string>, ...substs: Array<String>): string {

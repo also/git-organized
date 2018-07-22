@@ -59,7 +59,7 @@ function advance() {
   const {done, value} = iterator.next();
   if (!done) {
     console.log(chalk.underline(value));
-    checkRepo(value).then(advance).done();
+    checkRepo(value).then(advance).catch(e => setImmediate(() => {throw e;}));
   }
 }
 

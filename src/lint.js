@@ -4,7 +4,7 @@ import chalk from 'chalk';
 
 
 type LintResults = {
-  failures: Array<{ruleName: string, message: ?string}>
+  failures: Array<{ruleName: string, message: string}>
 };
 
 export type LintReporter = {
